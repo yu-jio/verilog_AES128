@@ -61,6 +61,8 @@ The control flow is managed by state transitions:
     * **D2**: Rounds 10–2 (`InvShiftRows`, `InvSubBytes`, `AddRoundKey`, `InvMixColumns`).
     * **D3**: Round 1 (`InvShiftRows`, `InvSubBytes`, `AddRoundKey`).
 * **Fi**: Output result and termination (`DONE`).
+<img width="1133" height="629" alt="스크린샷 2026-04-07 오전 4 01 01" src="https://github.com/user-attachments/assets/9ea2606b-1831-47ba-9376-09134e4bf377" />
+
 
 ---
 
@@ -76,6 +78,7 @@ The simulation demonstrates successful encryption and decryption cycles:
     * Input: `69c4e0d86a7b0430d8cdb78070b4c55a`
     * Key: `000102030405060708090a0b0c0d0e0f`
     * Result: `00112233445566778899aabbccddeeff` (Original text restored)
+<img width="947" height="344" alt="스크린샷 2026-04-07 오전 3 48 39" src="https://github.com/user-attachments/assets/188f2635-6ff9-4076-b8d2-a3e68eb4a9d9" />
 
 ---
 
