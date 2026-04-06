@@ -1,7 +1,7 @@
 # Design Report: Project AES-128
 
 **Department:** Computer Science and Engineering
-**Student ID:** 2021112229
+
 **Name:** Jio Yu (유지오)
 
 ---
