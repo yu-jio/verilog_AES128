@@ -1,116 +1,100 @@
-# Design Report: Project AES-128
+# Verilog AES-128
 
-**Department:** Computer Science and Engineering
+AES-128 encryption and decryption implemented in Verilog, with a C reference
+file and a Verilog testbench for validating the standard AES test vector.
 
-**Name:** Jio Yu (유지오)
+## Project Contents
 
----
+| File | Description |
+| --- | --- |
+| `AES_128.v` | Top-level Verilog AES-128 implementation |
+| `stimulus.v` | Simulation testbench |
+| `AES-128.c` | C reference implementation |
+| `README.md` | Design notes, datapath summary, FSM, waveform results, and synthesis notes |
 
-## 01. Table of Contents
-1. DataPath
-2. FSM (Finite State Machine)
-3. Waveforms
-4. Source Description
-5. Synthesis Results
+## Interface
 
----
+### Inputs
 
-## 02. DATAPATH
+| Signal | Width | Description |
+| --- | --- | --- |
+| `clk` | 1 bit | Clock signal |
+| `nrst` | 1 bit | Asynchronous reset |
+| `encdec` | 1 bit | Encryption/decryption select: `1` for encryption, `0` for decryption |
+| `start` | 1 bit | Starts an AES operation |
+| `key` | 128 bits | AES-128 key |
+| `textin` | 128 bits | Plaintext or ciphertext input |
 
-### Input/Output Signals
-#### Inputs
-* **clk**: Clock signal
-* **nrst**: Reset signal (Asynchronous)
-* **encdec**: Selection between Encryption (1) or Decryption (0)
-* **start**: Start operation signal
-* **key**: 128-bit encryption key
-* **textin**: 128-bit input data
+### Outputs
 
-#### Outputs
-* **done**: Operation completion signal
-* **textout**: 128-bit result (Encrypted or Decrypted)
+| Signal | Width | Description |
+| --- | --- | --- |
+| `done` | 1 bit | Operation complete flag |
+| `textout` | 128 bits | Encrypted or decrypted output |
 
-### Key Operations
-* **AddRoundKey**: XOR operation between the current state and round keys.
-* **SubBytes**: Byte-wise data substitution using the AES S-Box.
-* **ShiftRows**: Data rearrangement via row shifting.
-* **MixColumns**: Polynomial operations in $GF(2^8)$ on a column basis.
-* **KeyExpansion**: Generates keys for each round.
-* **Inverse Operations**: `InvShiftRows`, `InvSubBytes`, and `InvMixColumns` are used for decryption.
+## AES Datapath
 
-### Round & State Management
-* **Round Count**: AES-128 consists of a total of 10 rounds.
-* **round**: Variable representing the current round index.
-* **states**: 128-bit register array storing the state of each round.
-* **fullkeys**: 128-bit register array storing keys for each round.
-* **Intermediate Registers**: `afterSubBytes`, `afterShiftRows`, `afterMixColumns`, and `afterRoundKey` store intermediate results.
+The implementation follows the AES-128 round structure with 10 rounds.
 
----
+- `AddRoundKey`: XORs the current state with the round key
+- `SubBytes` / `InvSubBytes`: S-box substitution for encryption/decryption
+- `ShiftRows` / `InvShiftRows`: Row permutation step
+- `MixColumns` / `InvMixColumns`: Column diffusion in `GF(2^8)`
+- `KeyExpansion`: Generates the round keys
 
-## 03. FSM (Finite State Machine)
+Internal registers such as `states`, `fullkeys`, `afterSubBytes`,
+`afterShiftRows`, `afterMixColumns`, and `afterRoundKey` hold intermediate round
+values.
 
-The control flow is managed by state transitions:
+## Control FSM
 
-* **S0**: Initialization and waiting for the start signal.
-* **E1 ~ E3**: Encryption process execution.
-    * **E1**: Initial `AddRoundKey` and `KeyExpansion`.
-    * **E2**: Rounds 1–9 (`SubBytes`, `ShiftRows`, `MixColumns`, `AddRoundKey`, `KeyExpansion`).
-    * **E3**: Round 10 (`SubBytes`, `ShiftRows`, `AddRoundKey`).
-* **D1 ~ D3**: Decryption process execution.
-    * **D1**: `KeyExpansion`.
-    * **D2**: Rounds 10–2 (`InvShiftRows`, `InvSubBytes`, `AddRoundKey`, `InvMixColumns`).
-    * **D3**: Round 1 (`InvShiftRows`, `InvSubBytes`, `AddRoundKey`).
-* **Fi**: Output result and termination (`DONE`).
-<img width="1133" height="629" alt="스크린샷 2026-04-07 오전 4 01 01" src="https://github.com/user-attachments/assets/9ea2606b-1831-47ba-9376-09134e4bf377" />
+The control flow is organized around these states:
 
+| State | Purpose |
+| --- | --- |
+| `S0` | Initialize and wait for `start` |
+| `E1` | Initial `AddRoundKey` and `KeyExpansion` |
+| `E2` | Encryption rounds 1-9 |
+| `E3` | Final encryption round |
+| `D1` | Decryption key expansion |
+| `D2` | Decryption rounds 10-2 |
+| `D3` | Final decryption round |
+| `Fi` | Output result and assert `done` |
 
----
+<img width="1133" height="629" alt="AES-128 FSM diagram" src="https://github.com/user-attachments/assets/9ea2606b-1831-47ba-9376-09134e4bf377" />
 
-## 04. WAVEFORMS
+## Simulation Result
 
-The simulation demonstrates successful encryption and decryption cycles:
+The testbench validates the common AES-128 example vector:
 
-* **Encryption (Encode)**:
-    * Input: `00112233445566778899aabbccddeeff`
-    * Key: `000102030405060708090a0b0c0d0e0f`
-    * Result: `69c4e0d86a7b0430d8cdb78070b4c55a`
-* **Decryption (Decode)**:
-    * Input: `69c4e0d86a7b0430d8cdb78070b4c55a`
-    * Key: `000102030405060708090a0b0c0d0e0f`
-    * Result: `00112233445566778899aabbccddeeff` (Original text restored)
-<img width="947" height="344" alt="스크린샷 2026-04-07 오전 3 48 39" src="https://github.com/user-attachments/assets/188f2635-6ff9-4076-b8d2-a3e68eb4a9d9" />
+| Mode | Input | Key | Output |
+| --- | --- | --- | --- |
+| Encrypt | `00112233445566778899aabbccddeeff` | `000102030405060708090a0b0c0d0e0f` | `69c4e0d86a7b0430d8cdb78070b4c55a` |
+| Decrypt | `69c4e0d86a7b0430d8cdb78070b4c55a` | `000102030405060708090a0b0c0d0e0f` | `00112233445566778899aabbccddeeff` |
 
----
+<img width="947" height="344" alt="AES-128 simulation waveform" src="https://github.com/user-attachments/assets/188f2635-6ff9-4076-b8d2-a3e68eb4a9d9" />
 
-## 05. SOURCE DESCRIPTION
+## Source Notes
 
-### Main Module: AES_128
-The top-level module manages data flow and state transitions (S0, E1-E3, D1-D3, Fi).
+`AES_128` is the top-level module. It manages the encryption/decryption datapath,
+round transitions, key expansion, and final output timing. Arithmetic helpers
+implement polynomial multiplication in `GF(2^8)`, including functions such as
+`mb2`, `mb3`, and `mb0e`.
 
-### Operation Functions
-* **Substitution**: `SubBytes`, `InvSubBytes` (S-Box/Inverse S-Box).
-* **Permutation**: `ShiftRows`, `InvShiftRows`.
-* **Diffusion**: `MixColumns`, `InvMixColumns`.
-* **Key Management**: `KeyExpansion`, `AddRoundKey`.
-* **Arithmetic**: Polynomial multiplication in $GF(2^8)$ (e.g., `mb2`, `mb3`, `mb0e`).
+## Synthesis Summary
 
----
+| Metric | Result |
+| --- | --- |
+| Total on-chip power | 59.886 W |
+| Dynamic power | 58.856 W |
+| Device static power | 1.029 W |
+| Junction temperature | 125.0 C |
+| Thermal margin | -52.8 C |
 
-## 06. SYNTHESIS RESULTS
+Timing report excerpt:
 
-### Power Analysis (Synthesized Netlist)
-* **Total On-Chip Power**: 59.886 W
-* **Dynamic Power**: 58.856 W (98%)
-    * **Signals**: 32.390 W (55%)
-    * **Logic**: 24.560 W (42%)
-    * **I/O**: 1.906 W (3%)
-* **Device Static Power**: 1.029 W (2%)
-* **Junction Temperature**: 125.0°C (Warning: Junction temperature exceeded!)
-* **Thermal Margin**: -52.8°C
-
-### Timing Report Summary
 | Path | From | To | Total Delay (ns) | Logic Delay (ns) | Net Delay (ns) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| Path 1 | round_reg[1]/G | states_reg[0][19]/D | 5.228 | 1.099 | 4.129 |
-| Path 2 | round_reg[1]/G | states_reg[10][19]/D | 5.228 | 1.099 | 4.129 |
-| Path 3 | round_reg[1]/G | states_reg[11][19]/D | 5.228 | 1.099 | 4.129 |
+| --- | --- | --- | --- | --- | --- |
+| Path 1 | `round_reg[1]/G` | `states_reg[0][19]/D` | 5.228 | 1.099 | 4.129 |
+| Path 2 | `round_reg[1]/G` | `states_reg[10][19]/D` | 5.228 | 1.099 | 4.129 |
+| Path 3 | `round_reg[1]/G` | `states_reg[11][19]/D` | 5.228 | 1.099 | 4.129 |
